@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>השוברים המשפחתיים</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    
+    <style>
+        body { font-family: -apple-system, system-ui, sans-serif; background-color: #f2f2f7; margin: 0; padding: 20px; color: #1c1c1e; }
+        .card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #d1d1d6; }
+        .voucher-header { display: flex; justify-content: space-between; align-items: center; }
+        .balance { color: #34c759; font-weight: bold; font-size: 1.2rem; }
+        .code-area { background: #f2f2f7; padding: 10px; border-radius: 10px; text-align: center; margin-top: 10px; font-family: monospace; font-size: 1.4rem; letter-spacing: 2px; }
+        .add-btn { background-color: #007aff; color: white; border: none; width: 50px; height: 50px; border-radius: 25px; position: fixed; bottom: 20px; left: 20px; font-size: 24px; }
+        button { cursor: pointer; border-radius: 8px; border: none; padding: 5px 10px; background: #e5e5ea; }
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align: center;">השוברים שלנו</h1>
+    <div id="vouchers-list">טוען נתונים...</div>
+    <button class="add-btn" onclick="addNewVoucher()">+</button>
+
+    <script>
+        // הכנס כאן את הפרטים שתקבל מ-Firebase Console
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+        };
+
+        // אתחול Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // האזנה לשינויים בזמן אמת - זה מה שיוצר סנכרון בינך לבין אשתך
+        database.ref('vouchers').on('value', (snapshot) => {
+            const data = snapshot.val();
+            renderVouchers(data);
+        });
+
+        function renderVouchers(data) {
+            const container = document.getElementById('vouchers-list');
+            container.innerHTML = '';
+            if (!data) {
+                container.innerHTML = 'אין שוברים כרגע.';
+                return;
+            }
+
+            Object.keys(data).forEach(id => {
+                const v = data[id];
+                container.innerHTML += `
+                    <div class="card">
+                        <div class="voucher-header">
+                            <strong>${v.name}</strong>
+                            <span class="balance">₪${v.balance}</span>
+                        </div>
+                        <div class="code-area">${v.code}</div>
+                        <div style="margin-top:10px; display:flex; gap:10px;">
+                            <button onclick="updateVoucher('${id}', ${v.balance})">עדכן יתרה</button>
+                            <button onclick="deleteVoucher('${id}')" style="color:red;">מחק</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function addNewVoucher() {
+            const name = prompt("שם השובר:");
+            const balance = prompt("יתרה:");
+            const code = prompt("קוד מימוש:");
+            if (name && balance && code) {
+                database.ref('vouchers').push({
+                    name, balance: parseFloat(balance), code
+                });
+            }
+        }
+
+        function updateVoucher(id, currentBalance) {
+            const amountUsed = prompt("כמה שילמת?");
+            if (amountUsed) {
+                const newBalance = currentBalance - parseFloat(amountUsed);
+                database.ref('vouchers/' + id).update({ balance: newBalance });
+            }
+        }
+
+        function deleteVoucher(id) {
+            if (confirm("למחוק את השובר?")) {
+                database.ref('vouchers/' + id).remove();
+            }
+        }
+    </script>
+</body>
+</html>
